@@ -9,7 +9,7 @@ import base64
 from collections import namedtuple
 from typing import Any, Dict, Generator, List, Optional
 
-from . import core
+from . import core_v2 as core
 
 DEFAULT_COUNTRY = 'US'
 DEFAULT_LANGUAGE = 'en-US'
@@ -114,8 +114,10 @@ class Client(object):
 
     @property
     def session(self) -> core.Session:
+        #print("STATR WITH AUTH %s" % self.auth)
         if not self._session:
             self._session, self._devices = self.auth.start_session()
+        #print("SES %s" % self._session)
         return self._session
 
     @property
@@ -155,9 +157,7 @@ class Client(object):
 
         if 'auth' in state:
             data = state['auth']
-            client._auth = core.Auth(
-                client.gateway, data['access_token'], data['refresh_token']
-            )
+            client._auth = core.Auth.load(client._gateway, data)
 
         if 'session' in state:
             client._session = core.Session(client.auth, state['session'])
@@ -181,19 +181,10 @@ class Client(object):
         }
 
         if self._gateway:
-            out['gateway'] = {
-                'auth_base': self._gateway.auth_base,
-                'api_root': self._gateway.api_root,
-                'oauth_root': self._gateway.oauth_root,
-                'country': self._gateway.country,
-                'language': self._gateway.language,
-            }
+            out['gateway'] = self._gateway.dump()
 
         if self._auth:
-            out['auth'] = {
-                'access_token': self._auth.access_token,
-                'refresh_token': self._auth.refresh_token,
-            }
+            out['auth'] = self._auth.dump()
 
         if self._session:
             out['session'] = self._session.session_id
@@ -276,7 +267,8 @@ class DeviceInfo(object):
 
     @property
     def model_id(self) -> str:
-        return self.data['modelNm']
+        #return self.data['modelNm']
+        return self.data['modelName']
 
     @property
     def id(self) -> str:
@@ -284,7 +276,8 @@ class DeviceInfo(object):
 
     @property
     def model_info_url(self) -> str:
-        return self.data['modelJsonUrl']
+        #return self.data['modelJsonUrl']
+        return self.data['modelJsonUri']
 
     @property
     def name(self) -> str:

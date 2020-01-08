@@ -257,13 +257,28 @@ class Gateway(object):
         return cls(gw['empUri'], gw['thinqUri'], gw['oauthUri'],
                    country, language)
 
+    def get_tokens(self, url):
+        """Create an authentication using an OAuth callback URL.
+        """
+
+        access_token, refresh_token = parse_oauth_callback(url)
+
     def oauth_url(self):
         return oauth_url(self.auth_base, self.country, self.language)
 
+    def dump(self):
+        return {
+            'auth_base': self.auth_base,
+            'api_root': self.api_root,
+            'oauth_root': self.oauth_root,
+            'country': self.country,
+            'language': self.language
+        }
 
 class Auth(object):
-    def __init__(self, gateway, access_token, refresh_token):
+    def __init__(self, gateway, oauth_url, access_token, refresh_token):
         self.gateway = gateway
+        self.oauth_url = oauth_url
         self.access_token = access_token
         self.refresh_token = refresh_token
 
@@ -272,14 +287,13 @@ class Auth(object):
         """Create an authentication using an OAuth callback URL.
         """
 
-        access_token, refresh_token = parse_oauth_callback(url)
+        access_token, refresh_token = gateway.get_tokens(url)
         return cls(gateway, access_token, refresh_token)
 
     def start_session(self) -> Tuple['Session', List[Dict[str, Any]]]:
         """Start an API session for the logged-in user. Return the
         Session object and a list of the user's devices.
         """
-
         session_info = login(self.gateway.api_root, self.access_token,
                              self.gateway.country, self.gateway.language)
         session_id = session_info['jsessionId']
@@ -293,6 +307,11 @@ class Auth(object):
                                         self.refresh_token)
         return Auth(self.gateway, new_access_token, self.refresh_token)
 
+    def dump(self):
+        return {
+            'access_token': self.access_token,
+            'refresh_token': self.refresh_token
+        }
 
 class Session(object):
     def __init__(self, auth, session_id) -> None:
@@ -314,7 +333,6 @@ class Session(object):
 
         Return a list of dicts with information about the devices.
         """
-
         return get_list(self.post('device/deviceList'), 'item')
 
     def monitor_start(self, device_id):
