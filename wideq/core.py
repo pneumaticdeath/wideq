@@ -9,6 +9,8 @@ import datetime
 import requests
 from typing import Any, Dict, List, Tuple
 
+from .core_exceptions import *
+
 GATEWAY_URL = 'https://kic.lgthinq.com:46030/api/common/gatewayUriList'
 APP_KEY = 'wideq'
 SECURITY_KEY = 'nuts_securitykey'
@@ -56,30 +58,6 @@ def get_list(obj, key: str) -> List[Dict[str, Any]]:
     else:
         return [val]
 
-
-class APIError(Exception):
-    """An error reported by the API."""
-
-    def __init__(self, code, message):
-        self.code = code
-        self.message = message
-
-
-class NotLoggedInError(APIError):
-    """The session is not valid or expired."""
-
-
-class NotConnectedError(APIError):
-    """The service can't contact the specified device."""
-
-
-class TokenError(APIError):
-    """An authentication token was rejected."""
-
-    def __init__(self):
-        pass
-
-
 class FailedRequestError(APIError):
     """A failed request typically indicates an unsupported control on a
     device.
@@ -88,16 +66,6 @@ class FailedRequestError(APIError):
 
 class InvalidRequestError(APIError):
     """The server rejected a request as invalid."""
-
-
-class MonitorError(APIError):
-    """Monitoring a device failed, possibly because the monitoring
-    session failed and needs to be restarted.
-    """
-
-    def __init__(self, device_id, code):
-        self.device_id = device_id
-        self.code = code
 
 
 API_ERRORS = {
