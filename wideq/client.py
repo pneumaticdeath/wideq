@@ -9,10 +9,8 @@ import base64
 from collections import namedtuple
 from typing import Any, Dict, Generator, List, Optional
 
-from .core import Auth, Gateway, MonitorError, Session
+from .core import Auth, Gateway, MonitorError, Session, DEFAULT_COUNTRY, DEFAULT_LANGUAGE
 
-DEFAULT_COUNTRY = 'US'
-DEFAULT_LANGUAGE = 'en-US'
 #: Represents an unknown enum value.
 _UNKNOWN = 'Unknown'
 
@@ -143,12 +141,7 @@ class Client(object):
         client = cls()
 
         if 'gateway' in state:
-            data = state['gateway']
-            client._gateway = Gateway(
-                data['auth_base'], data['api_root'], data['oauth_root'],
-                data.get('country', DEFAULT_COUNTRY),
-                data.get('language', DEFAULT_LANGUAGE),
-            )
+            client._gateway = Gateway.deserialize(state['gateway'])
 
         if 'auth' in state:
             data = state['auth']
@@ -178,19 +171,10 @@ class Client(object):
         }
 
         if self._gateway:
-            out['gateway'] = {
-                'auth_base': self._gateway.auth_base,
-                'api_root': self._gateway.api_root,
-                'oauth_root': self._gateway.oauth_root,
-                'country': self._gateway.country,
-                'language': self._gateway.language,
-            }
+            out['gateway'] = self._gateway.serialize()
 
         if self._auth:
-            out['auth'] = {
-                'access_token': self._auth.access_token,
-                'refresh_token': self._auth.refresh_token,
-            }
+            out['auth'] = self._auth.serialize()
 
         if self._session:
             out['session'] = self._session.session_id
