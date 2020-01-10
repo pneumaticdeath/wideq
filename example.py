@@ -162,7 +162,7 @@ def example_command(client, cmd, args):
     func(client, *args)
 
 
-def example(country, language, cmd, args):
+def example(country, language, cmd, api_v2, args):
     # Load the current state for the example.
     try:
         with open(STATE_FILE) as f:
@@ -221,9 +221,12 @@ def main():
         help='language code for the API (default: {})'
         .format(wideq.DEFAULT_LANGUAGE)
     )
+    parser.add_argument('--api2', action='store_true',
+        help="Use API version 2 (newer LG API)"
+    )
 
     args = parser.parse_args()
-    example(args.country, args.language, args.cmd, args.args)
+    example(args.country, args.language, args.cmd, args.api2, args.args)
 
 
 if __name__ == '__main__':
