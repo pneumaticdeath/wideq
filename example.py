@@ -5,7 +5,7 @@ import argparse
 import sys
 
 STATE_FILE = 'wideq_state.json'
-
+STATE_FILE_API_V2 = 'wideq_state2.json'
 
 def authenticate(gateway):
     """Interactively authenticate the user via a browser to get an OAuth
@@ -162,10 +162,11 @@ def example_command(client, cmd, args):
     func(client, *args)
 
 
-def example(country, language, cmd, api_v2, args):
+def example(country, language, cmd, api_v2: bool, args):
+    state_file = STATE_FILE_API_V2 if api_v2 else STATE_FILE
     # Load the current state for the example.
     try:
-        with open(STATE_FILE) as f:
+        with open(state_file) as f:
             state = json.load(f)
     except IOError:
         state = {}
@@ -196,7 +197,7 @@ def example(country, language, cmd, api_v2, args):
 
     # Save the updated state.
     state = client.dump()
-    with open(STATE_FILE, 'w') as f:
+    with open(state_file, 'w') as f:
         json.dump(state, f)
 
 
