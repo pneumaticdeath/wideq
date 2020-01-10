@@ -7,9 +7,9 @@ import logging
 import requests
 import base64
 from collections import namedtuple
-from typing import Any, Optional
+from typing import Any, Dict, Generator, List, Optional
 
-from . import core
+from .core import Auth, Gateway, MonitorError, Session
 
 DEFAULT_COUNTRY = 'US'
 DEFAULT_LANGUAGE = 'en-US'
@@ -25,36 +25,36 @@ class Monitor(object):
     makes one `Monitor` object suitable for long-term monitoring.
     """
 
-    def __init__(self, session, device_id):
+    def __init__(self, session, device_id) -> None:
         self.session = session
         self.device_id = device_id
 
-    def start(self):
+    def start(self) -> None:
         self.work_id = self.session.monitor_start(self.device_id)
 
-    def stop(self):
+    def stop(self) -> None:
         self.session.monitor_stop(self.device_id, self.work_id)
 
-    def poll(self):
+    def poll(self) -> Optional[bytes]:
         """Get the current status data (a bytestring) or None if the
         device is not yet ready.
         """
 
         try:
             return self.session.monitor_poll(self.device_id, self.work_id)
-        except core.MonitorError:
+        except MonitorError:
             # Try to restart the task.
             self.stop()
             self.start()
             return None
 
     @staticmethod
-    def decode_json(data):
+    def decode_json(data: bytes) -> Dict[str, Any]:
         """Decode a bytestring that encodes JSON status data."""
 
         return json.loads(data.decode('utf8'))
 
-    def poll_json(self):
+    def poll_json(self) -> Optional[Dict[str, Any]]:
         """For devices where status is reported via JSON data, get the
         decoded status result (or None if status is not available).
         """
@@ -62,11 +62,11 @@ class Monitor(object):
         data = self.poll()
         return self.decode_json(data) if data else None
 
-    def __enter__(self):
+    def __enter__(self) -> 'Monitor':
         self.start()
         return self
 
-    def __exit__(self, type, value, tb):
+    def __exit__(self, type, value, tb) -> None:
         self.stop()
 
 
@@ -76,46 +76,47 @@ class Client(object):
     """
 
     def __init__(self, gateway=None, auth=None, session=None,
-                 country=DEFAULT_COUNTRY, language=DEFAULT_LANGUAGE):
+                 country: str = DEFAULT_COUNTRY,
+                 language: str = DEFAULT_LANGUAGE) -> None:
         # The three steps required to get access to call the API.
-        self._gateway = gateway
-        self._auth = auth
-        self._session = session
+        self._gateway: Gateway = gateway
+        self._auth: Auth = auth
+        self._session: Session = session
 
         # The last list of devices we got from the server. This is the
         # raw JSON list data describing the devices.
-        self._devices = None
+        self._devices: List[Dict[str, Any]] = []
 
         # Cached model info data. This is a mapping from URLs to JSON
         # responses.
-        self._model_info = {}
+        self._model_info: Dict[str, Any] = {}
 
         # Locale information used to discover a gateway, if necessary.
-        self._country = country
-        self._language = language
+        self._country: str = country
+        self._language: str = language
 
     @property
-    def gateway(self):
+    def gateway(self) -> Gateway:
         if not self._gateway:
-            self._gateway = core.Gateway.discover(
+            self._gateway = Gateway.discover(
                 self._country, self._language
             )
         return self._gateway
 
     @property
-    def auth(self):
+    def auth(self) -> Auth:
         if not self._auth:
             assert False, "unauthenticated"
         return self._auth
 
     @property
-    def session(self):
+    def session(self) -> Session:
         if not self._session:
             self._session, self._devices = self.auth.start_session()
         return self._session
 
     @property
-    def devices(self):
+    def devices(self) -> Generator['DeviceInfo', None, None]:
         """DeviceInfo objects describing the user's devices.
         """
 
@@ -123,7 +124,7 @@ class Client(object):
             self._devices = self.session.get_devices()
         return (DeviceInfo(d) for d in self._devices)
 
-    def get_device(self, device_id):
+    def get_device(self, device_id) -> Optional['DeviceInfo']:
         """Look up a DeviceInfo object by device ID.
 
         Return None if the device does not exist.
@@ -135,7 +136,7 @@ class Client(object):
         return None
 
     @classmethod
-    def load(cls, state):
+    def load(cls, state: Dict[str, Any]) -> 'Client':
         """Load a client from serialized state.
         """
 
@@ -143,7 +144,7 @@ class Client(object):
 
         if 'gateway' in state:
             data = state['gateway']
-            client._gateway = core.Gateway(
+            client._gateway = Gateway(
                 data['auth_base'], data['api_root'], data['oauth_root'],
                 data.get('country', DEFAULT_COUNTRY),
                 data.get('language', DEFAULT_LANGUAGE),
@@ -151,12 +152,12 @@ class Client(object):
 
         if 'auth' in state:
             data = state['auth']
-            client._auth = core.Auth(
+            client._auth = Auth(
                 client.gateway, data['access_token'], data['refresh_token']
             )
 
         if 'session' in state:
-            client._session = core.Session(client.auth, state['session'])
+            client._session = Session(client.auth, state['session'])
 
         if 'model_info' in state:
             client._model_info = state['model_info']
@@ -169,10 +170,10 @@ class Client(object):
 
         return client
 
-    def dump(self):
+    def dump(self) -> Dict[str, Any]:
         """Serialize the client state."""
 
-        out = {
+        out: Dict[str, Any] = {
             'model_info': self._model_info,
         }
 
@@ -199,7 +200,7 @@ class Client(object):
 
         return out
 
-    def refresh(self):
+    def refresh(self) -> None:
         self._auth = self.auth.refresh()
         self._session, self._devices = self.auth.start_session()
 
@@ -216,11 +217,11 @@ class Client(object):
             country=country or DEFAULT_COUNTRY,
             language=language or DEFAULT_LANGUAGE,
         )
-        client._auth = core.Auth(client.gateway, None, refresh_token)
+        client._auth = Auth(client.gateway, None, refresh_token)
         client.refresh()
         return client
 
-    def model_info(self, device):
+    def model_info(self, device: 'DeviceInfo') -> 'ModelInfo':
         """For a DeviceInfo object, get a ModelInfo object describing
         the model's capabilities.
         """
@@ -266,11 +267,11 @@ class DeviceInfo(object):
     This is populated from a JSON dictionary provided by the API.
     """
 
-    def __init__(self, data):
+    def __init__(self, data: Dict[str, Any]) -> None:
         self.data = data
 
     @property
-    def model_id(self):
+    def model_id(self) -> str:
         return self.data['modelNm']
 
     @property
