@@ -47,7 +47,7 @@ class WasherStatusTest(unittest.TestCase):
                 'modelName=F3L2CYV5W_WIFI&countryCode=WW&contentsId='
                 'JS1217232703654216&authKey=thinq'),
             'modelNm': 'F3L2CYV5W_WIFI',
-        })
+        }, api_v2=False)
         self.washer = WasherDevice(self.client, self.device_info)
 
     def test_properties(self):

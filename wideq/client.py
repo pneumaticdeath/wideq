@@ -75,7 +75,11 @@ class Client(object):
 
     def __init__(self, gateway=None, auth=None, session=None,
                  country: str = DEFAULT_COUNTRY,
-                 language: str = DEFAULT_LANGUAGE) -> None:
+                 language: str = DEFAULT_LANGUAGE,
+                 api_v2=False) -> None:
+        # The version of the API we will use
+        self._is_api_v2 = api_v2
+
         # The three steps required to get access to call the API.
         self._gateway: Gateway = gateway
         self._auth: Auth = auth
@@ -120,7 +124,7 @@ class Client(object):
 
         if not self._devices:
             self._devices = self.session.get_devices()
-        return (DeviceInfo(d) for d in self._devices)
+        return (DeviceInfo(d, api_v2=self._is_api_v2) for d in self._devices)
 
     def get_device(self, device_id) -> Optional['DeviceInfo']:
         """Look up a DeviceInfo object by device ID.
@@ -134,11 +138,11 @@ class Client(object):
         return None
 
     @classmethod
-    def load(cls, state: Dict[str, Any]) -> 'Client':
+    def load(cls, state: Dict[str, Any], api_v2: bool) -> 'Client':
         """Load a client from serialized state.
         """
 
-        client = cls()
+        client = cls(api_v2=api_v2)
 
         if 'gateway' in state:
             client._gateway = Gateway.deserialize(state['gateway'])
@@ -251,12 +255,14 @@ class DeviceInfo(object):
     This is populated from a JSON dictionary provided by the API.
     """
 
-    def __init__(self, data: Dict[str, Any]) -> None:
+    def __init__(self, data: Dict[str, Any], api_v2: bool) -> None:
         self.data = data
+        self._is_api_v2 = api_v2
 
     @property
     def model_id(self) -> str:
-        return self.data['modelNm']
+        model_name_key = 'modelName' if self._is_api_v2 else 'modelNm'
+        return self.data[model_name_key]
 
     @property
     def id(self):
@@ -264,7 +270,8 @@ class DeviceInfo(object):
 
     @property
     def model_info_url(self):
-        return self.data['modelJsonUrl']
+        uri_key = 'modelJsonUri' if self._is_api_v2 else 'modelJsonUrl'
+        return self.data[uri_key]
 
     @property
     def name(self):

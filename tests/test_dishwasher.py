@@ -45,7 +45,7 @@ class DishWasherStatusTest(unittest.TestCase):
                 'modelName=D3210&countryCode=WW&contentsId='
                 'JS0719082250749334&authKey=thinq'),
             'modelNm': 'D3210',
-        })
+        }, api_v2=False)
         self.dishwasher = DishWasherDevice(self.client, self.device_info)
 
     def test_properties(self):

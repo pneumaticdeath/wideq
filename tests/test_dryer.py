@@ -44,7 +44,7 @@ class DryerStatusTest(unittest.TestCase):
                 'modelName=RV13B6ES_D_US_WIFI&countryCode=WW&contentsId='
                 'JS11260025236447318&authKey=thinq'),
             'modelNm': 'RV13B6ES_D_US_WIFI',
-        })
+        }, api_v2=False)
         self.dryer = DryerDevice(self.client, self.device_info)
 
     def test_properties(self):

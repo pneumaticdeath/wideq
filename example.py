@@ -171,7 +171,7 @@ def example(country, language, cmd, api_v2: bool, args):
     except IOError:
         state = {}
 
-    client = wideq.Client.load(state)
+    client = wideq.Client.load(state, api_v2=api_v2)
     if country:
         client._country = country
     if language:
