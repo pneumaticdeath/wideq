@@ -274,11 +274,11 @@ class Session(object):
         """
 
         url = urljoin(self.auth.gateway.api_root + '/', path)
-        return lgedm_post(url, data, self.auth.access_token, self.session_id)
+        return core.lgedm_post(url, data, self.auth.access_token, self.session_id)
 
     def post2(self, path, data=None):
         url = urljoin(self.auth.gateway.api_root + '/', path)
-        return lgedm_post(url, data, self.auth.access_token, self.session_id)
+        return core.lgedm_post(url, data, self.auth.access_token, self.session_id)
 
     def get2(self, path):
         url = urljoin(self.auth.gateway.api_root + '/', path)
